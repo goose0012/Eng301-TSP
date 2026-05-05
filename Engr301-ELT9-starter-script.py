@@ -1,7 +1,8 @@
 ############################################################
 #################### IMPORT LIBRARIES ######################
 ############################################################
-from machine import ADC
+from machine import ADC, I2C, Pin
+from ssd1306 import SSD1306_I2C
 from math import log
 from time import sleep                     # <<< DO NOT MODIFY >>>
 sleep(5) # required for stability          # <<< DO NOT MODIFY >>>
@@ -21,6 +22,11 @@ import random
 ############################################################
 thermistor = ADC(28)
 
+# OLED object
+display_width = 128 # pixel x values = 0 to 127
+display_height = 64 # pixel y values = 0 to 63
+i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000) # TX pin is Pin 0, RX pin is Pin 1
+display = SSD1306_I2C(display_width, display_height, i2c)
 
 ############################################################
 ##################### OTHER SETUP STUFF ####################
@@ -71,18 +77,29 @@ A = 1.129e-3
 B= 2.341e-4
 C= 8.767e-8
 
-
-############################################################
-####################### INFINITE LOOP ######################
-############################################################
-while True: 
-    #get temp
+#get temp
+def getTempC():
     adc_value = thermistor.read_u16() # 0 to 65535
     V_out = (V_in/65535) * adc_value #[volts]
     Rt = (V_out * R1) / (V_in - V_out) # calculate resistance
     TempK = 1 / (A + (B * log(Rt)) + (C*pow(log(Rt), 3) ) )
     temperature_sensor_reading = TempK - 273.15 #[celcius]
-    print(temperature_sensor_reading)
+    return temperature_sensor_reading
+
+############################################################
+####################### INFINITE LOOP ######################
+############################################################
+while True:
+    tempC = getTempC()
+    print(tempC)
+    
+    #OLED Menu
+    display.fill(0)
+    display.text("Welcome to Main Page", 0, 0)
+    display.text("1: Temp C", 0, 15)
+    display.text("2: Temp F", 0, 35)
+    display.text("3: Status", 0, 50)
+    display.show()
 
 
     # Create and send MQTT payload                               # <<< DO NOT MODIFY >>>
@@ -100,3 +117,4 @@ while True:
 #        print("Publish failed:",e)
     
     sleep(2) # Send MQTT payload every 2 seconds
+
