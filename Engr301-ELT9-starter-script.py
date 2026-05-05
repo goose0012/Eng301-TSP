@@ -1,6 +1,7 @@
 ############################################################
 #################### IMPORT LIBRARIES ######################
 ############################################################
+from machine import ADC
 from time import sleep                     # <<< DO NOT MODIFY >>>
 sleep(5) # required for stability          # <<< DO NOT MODIFY >>>
 
@@ -17,7 +18,7 @@ import random
 ############################################################
 ################# SPECIFY PINS AND OBJECTS #################
 ############################################################
-
+thermistor = ADC(28)
 
 
 ############################################################
@@ -60,20 +61,30 @@ try:                                                    # <<< DO NOT MODIFY >>>
 except Exception as e:                                  # <<< DO NOT MODIFY >>>
     print("Failed to connect to MQTT broker:", e)
 
+# voltage divider
+V_in = 3.3 #[volts]
+R1 = 10000 #[ohms], 10K resistor
+
+# steinhart constants
+A = 1.129e-3
+B= 2.341e-4
+C= 8.767e-8
+
 
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
 while True: 
-    # !!!-- Psuedo temperature sensor reading between 50 and 55 --!!!
-    # !!!-- You must use this variable name: temperature_sensor_reading --!!!
-    # !!!-- Currently, the temperature reading is just a random number for demo purposes --!!!
-    temperature_sensor_reading = random.random()*5 + 50
+    #get temp
+    adc_value = thermistor.read_u16() # 0 to 65535
+    V_out = (V_in/65535) * adc_value #[volts]
+    Rt = (V_out * R1) / (V_in - V_out) # calculate resistance
+    TempK = 1 / (A + (B * log(Rt)) + (C*pow(log(Rt), 3) ) )
+    temperature_sensor_reading = TempK - 273.15 #[celcius]
+    return temperature_sensor_reading
+    print(temperature_sensor_reading)
 
 
-    
-    
-    
     # Create and send MQTT payload                               # <<< DO NOT MODIFY >>>
     message_data = {                                             # <<< DO NOT MODIFY >>>
         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
