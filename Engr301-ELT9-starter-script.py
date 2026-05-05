@@ -70,20 +70,20 @@ A = 1.129e-3
 B= 2.341e-4
 C= 8.767e-8
 
+def getTempC():
+        adc_value = thermistor.read_u16() # 0 to 65535
+        V_out = (V_in/65535) * adc_value #[volts]
+        Rt = (V_out * R1) / (V_in - V_out) # calculate resistance
+        TempK = 1 / (A + (B * log(Rt)) + (C*pow(log(Rt), 3) ) )
+        temperature_sensor_reading = TempK - 273.15 #[celcius]
+        return temperature_sensor_reading
+        print(temperature_sensor_reading)
 
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
-while True: 
-    #get temp
-    adc_value = thermistor.read_u16() # 0 to 65535
-    V_out = (V_in/65535) * adc_value #[volts]
-    Rt = (V_out * R1) / (V_in - V_out) # calculate resistance
-    TempK = 1 / (A + (B * log(Rt)) + (C*pow(log(Rt), 3) ) )
-    temperature_sensor_reading = TempK - 273.15 #[celcius]
-    return temperature_sensor_reading
-    print(temperature_sensor_reading)
 
+while True:
 
     # Create and send MQTT payload                               # <<< DO NOT MODIFY >>>
     message_data = {                                             # <<< DO NOT MODIFY >>>
