@@ -2,9 +2,10 @@
 #################### IMPORT LIBRARIES ######################
 ############################################################
 from machine import ADC, I2C, Pin
+from picozero import Button
 from ssd1306 import SSD1306_I2C
 from math import log
-from time import sleep                     # <<< DO NOT MODIFY >>>
+from time import sleep, ticks_ms, ticks_diff  # <<< DO NOT MODIFY >>>
 sleep(5) # required for stability          # <<< DO NOT MODIFY >>>
 
 # Imports for MQTT communication           # <<< DO NOT MODIFY >>>
@@ -28,6 +29,10 @@ display_height = 64 # pixel y values = 0 to 63
 i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000) # TX pin is Pin 0, RX pin is Pin 1
 display = SSD1306_I2C(display_width, display_height, i2c)
 
+x_joy = ADC(27)
+y_Joy = ADC(26)
+Button_Joy = Button(21)
+
 ############################################################
 ##################### OTHER SETUP STUFF ####################
 ############################################################
@@ -48,18 +53,18 @@ wlan.active(True)                                           # <<< DO NOT MODIFY 
 wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
 wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
 
-print("Attempting to connect to Wi-Fi")
-while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
-    pass                                                    # <<< DO NOT MODIFY >>>
-
-sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
-print("Connected to Wi-Fi!")
-
-
-
-# Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
-client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
-client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
+# print("Attempting to connect to Wi-Fi")
+# while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
+#     pass                                                    # <<< DO NOT MODIFY >>>
+# 
+# sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
+# print("Connected to Wi-Fi!")
+# 
+# 
+# 
+# # Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
+# client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
+# client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
 
 # Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
 try:                                                    # <<< DO NOT MODIFY >>>
@@ -86,35 +91,84 @@ def getTempC():
     temperature_sensor_reading = TempK - 273.15 #[celcius]
     return temperature_sensor_reading
 
+left1_flag = False
+right1_flag = False
+left2_flag = False
+right2_flag = False
+time_flag = False
+
+display.fill(0)
+display.text("Input the", 0, 10)
+display.text("password.", 0, 20)
+display.show()
+
+while (time_flag == False):
+    while(left1_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value < 500):
+            left1_flag = True
+            start_time = ticks_ms()
+            print("Left Check!")
+    while(right1_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value > 64000):
+            right1_flag = True
+            print("Right Check!")
+    while(left2_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value < 500):
+            left2_flag = True
+            print("Left 2 Check!")
+    while(right2_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value > 64000):
+            right2_flag = True
+            end_time = ticks_ms()
+            print("Right 2 Check!")
+    
+            deltaTime = ticks_diff(end_time, start_time) / 1000
+    if (deltaTime <= 3):
+        time_flag = True
+        display.fill(0)
+        display.text("UNLOCKED", 0, 0)
+        display.show()
+        print(deltaTime)
+    else:
+        display.fill(0)
+        display.text("UNLOCKED", 0, 0)
+        display.show()
+        left1_flag = False
+        right1_flag = False
+        left2_flag = False
+        right2_flag = False
+        
+#OLED Menu
+display.fill(0)
+display.text("Welcome to Main Page", 0, 0)
+display.text("Up: Temp C", 0, 15)
+display.text("L: Temp F", 0, 35)
+display.text("R: Status", 0, 50)
+display.show()
+
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
-while True:
-    tempC = getTempC()
-    print(tempC)
-    
-    #OLED Menu
-    display.fill(0)
-    display.text("Welcome to Main Page", 0, 0)
-    display.text("1: Temp C", 0, 15)
-    display.text("2: Temp F", 0, 35)
-    display.text("3: Status", 0, 50)
-    display.show()
+# while True:    
+#     # Create and send MQTT payload                               # <<< DO NOT MODIFY >>>
+#     message_data = {                                             # <<< DO NOT MODIFY >>>
+#         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
+#         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
+#     }                                                            # <<< DO NOT MODIFY >>>
+#     message_json = json.dumps(message_data)  # Convert to JSON   # <<< DO NOT MODIFY >>>
+#     
+#     # Try to publish message to MQTT broker                                    # <<< DO NOT MODIFY >>>
+#     try:                                                                       # <<< DO NOT MODIFY >>>
+#         client.publish(TOPIC, message_json, retain=True) # Send MQTT payload   # <<< DO NOT MODIFY >>>
+#         print(f"Published: {message_json}") # Print MQTT payload to the Shell
+#     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
+#         print("Publish failed:",e)
+#     
+#     sleep(2) # Send MQTT payload every 2 seconds
 
 
-    # Create and send MQTT payload                               # <<< DO NOT MODIFY >>>
-    message_data = {                                             # <<< DO NOT MODIFY >>>
-        "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
-        "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
-    }                                                            # <<< DO NOT MODIFY >>>
-    message_json = json.dumps(message_data)  # Convert to JSON   # <<< DO NOT MODIFY >>>
-    
-    # Try to publish message to MQTT broker                                    # <<< DO NOT MODIFY >>>
-    try:                                                                       # <<< DO NOT MODIFY >>>
-        client.publish(TOPIC, message_json, retain=True) # Send MQTT payload   # <<< DO NOT MODIFY >>>
-        print(f"Published: {message_json}") # Print MQTT payload to the Shell
-    except Exception as e:                                                     # <<< DO NOT MODIFY >>>
-        print("Publish failed:",e)
-    
-    sleep(2) # Send MQTT payload every 2 seconds
 
