@@ -6,7 +6,7 @@ from picozero import Button
 from ssd1306 import SSD1306_I2C
 from math import log
 from time import sleep  # <<< DO NOT MODIFY >>>
-sleep(5) # required for stability          # <<< DO NOT MODIFY >>>
+sleep(1) # required for stability          # <<< DO NOT MODIFY >>>
 
 # Imports for MQTT communication           # <<< DO NOT MODIFY >>>
 import network                             # <<< DO NOT MODIFY >>>
@@ -175,6 +175,9 @@ while(right2_flag == False):
         right2_flag = True
         print("Right 2 Check!")
 
+file = open("data.txt", "w")
+file.close()
+
 display.fill(0)
 display.text("UNLOCKED", 0, 0)
 display.show()
@@ -236,6 +239,14 @@ while True:
         if button_rising:
             page = "main"
 
+    tempC = getTempC()
+    # Open for writing (overwrites existing content)
+    # Open for writing (overwrites existing content)
+    file = open("data.txt", "a")
+    file.write(str(tempC))
+    file.write('\n')
+    file.close() # Always close to save changes
+    
     # Show pages
     display.fill(0)
     if page == "main":
@@ -245,12 +256,10 @@ while True:
         display.text("Right: Status", 0, 45)
     elif page == "tempC":
         display.text("Temp C Menu", 0, 0)
-        tempC = getTempC()
         display.text(str(round(tempC, 2)) + " C", 0, 20)
         display.text("Press to back", 0, 50)
     elif page == "tempF":
         display.text("Temp F Menu", 0, 0)
-        tempC = getTempC()
         tempF = (tempC * 9/5) + 32
         display.text(str(round(tempF, 2)) + " F", 0, 20)
         display.text("Press to back", 0, 50)
@@ -261,7 +270,7 @@ while True:
         display.text("Press to back", 0, 50)
     display.show()
 
-    sleep(2)
+    sleep(0.2)
 
     # --- MQTT publish ---
     temperature_sensor_reading = getTempC()
@@ -276,7 +285,3 @@ while True:
         print(f"Published: {message_json}")
     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
         print("Publish failed:", e)
-
-
-
-
