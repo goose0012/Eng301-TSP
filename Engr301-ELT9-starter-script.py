@@ -135,16 +135,19 @@ def getTempC():
     temperature_sensor_reading = TempK - 273.15
     return temperature_sensor_reading
 
+# Password flags
 left1_flag = False
 right1_flag = False
 left2_flag = False
 right2_flag = False
+
 
 display.fill(0)
 display.text("Input the", 0, 10)
 display.text("password.", 0, 20)
 display.show()
 
+# Get user input and unlock if matched.
 while(left1_flag == False):
     x_joy_value = x_joy.read_u16()
     if (x_joy_value < 500):
@@ -181,10 +184,11 @@ sleep(1)
 ####################### INFINITE LOOP ######################
 ############################################################
 
+# Define low and high joystick varaibles
 JOY_LOW = 500
 JOY_HIGH = 64000
 
-
+# Translate joy values to directional input for system
 def get_joy_dir(x_value, y_value):
     if y_value > JOY_HIGH:
         return "up"
@@ -211,7 +215,7 @@ while True:
     button_rising = button_pressed and not prev_button_pressed
     prev_button_pressed = button_pressed
 
-    # Debounce joystick movement: trigger only on edge
+    # Straight from stackoverflow, joystick only triggers when right on the edge
     dir_edge = None
     if dir_now is None:
         last_dir = None
@@ -228,11 +232,11 @@ while True:
         elif dir_edge == "right":
             page = "status"
     else:
-        # In any submenu, press joystick button to go back
+        # Press button to go back. 
         if button_rising:
             page = "main"
 
-    # Render
+    # Show pages
     display.fill(0)
     if page == "main":
         display.text("Main Page", 0, 0)
@@ -257,7 +261,7 @@ while True:
         display.text("Press to back", 0, 50)
     display.show()
 
-    sleep(0.3)
+    sleep(2)
 
     # --- MQTT publish ---
     temperature_sensor_reading = getTempC()
