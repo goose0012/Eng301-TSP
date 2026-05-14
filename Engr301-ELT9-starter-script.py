@@ -6,7 +6,9 @@ from picozero import Button
 from ssd1306 import SSD1306_I2C
 from math import log
 from time import sleep  # <<< DO NOT MODIFY >>>
+sleep(5) # required for stability          # <<< DO NOT MODIFY >>>
 
+# Imports for MQTT communication           # <<< DO NOT MODIFY >>>
 import network                             # <<< DO NOT MODIFY >>>
 import json                                # <<< DO NOT MODIFY >>>
 from umqtt.robust import MQTTClient        # <<< DO NOT MODIFY >>>
@@ -26,31 +28,95 @@ display = SSD1306_I2C(display_width, display_height, i2c)
 
 x_joy = ADC(27)
 y_Joy = ADC(26)
-Button_Joy = Pin(21, Pin.IN, Pin.PULL_UP)  # Raw pin, active-low
+Button_Joy = Button(18)
 
 ############################################################
 ##################### OTHER SETUP STUFF ####################
 ############################################################
 
-SSID = "WilfongEngr301"                                            # <<< DO NOT MODIFY >>>
-PASSWORD = "BoilerUp"                                              # <<< DO NOT MODIFY >>>
-MQTT_BROKER = "10.42.0.1"                                          # <<< DO NOT MODIFY >>>
-TOPIC = "pico/data"                                                # <<< DO NOT MODIFY >>>
+# Wi-Fi and MQTT settings
+SSID = "WilfongEngr301" # Raspberry Pi 4 Wi-Fi name                               # <<< DO NOT MODIFY >>>
+PASSWORD = "BoilerUp" # Raspberry Pi 4 Wi-Fi password, WPA/WPA2 security          # <<< DO NOT MODIFY >>>
+MQTT_BROKER = "10.42.0.1"  # Raspberry Pi 4's IP                                  # <<< DO NOT MODIFY >>>
+TOPIC = "pico/data" # "pico/data" is just a label                                 # <<< DO NOT MODIFY >>>
+                    # It helps organize messages, like folders in a file system.  # <<< DO NOT MODIFY >>>
+                    # The TOPIC could be any string, but leave it as "pico/data"  # <<< DO NOT MODIFY >>>
+
+# SENSOR_ID = "Team02"  # !!!-- CHANGE THIS AS DIRECTED BY DR. WILFONG --!!!
 
 SENSOR_ID = "Team02"
 
-client = MQTTClient("PicoW", MQTT_BROKER)
+ # Connect to Wi-Fi                                          # <<< DO NOT MODIFY >>>
+wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
+wlan.active(True)                                           # <<< DO NOT MODIFY >>>
+wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
+wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
 
-wlan = network.WLAN(network.STA_IF)                                # <<< DO NOT MODIFY >>>
-wlan.active(True)                                                  # <<< DO NOT MODIFY >>>
-wlan.config(pm = 0xa11140)                                         # <<< DO NOT MODIFY >>>
-wlan.connect(SSID, PASSWORD)                                       # <<< DO NOT MODIFY >>>
+print("Attempting to connect to Wi-Fi")
+while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
+    pass                                                    # <<< DO NOT MODIFY >>>
 
-try:                                                               # <<< DO NOT MODIFY >>>
-   client.connect()                                                # <<< DO NOT MODIFY >>>
+sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
+print("Connected to Wi-Fi!")
+ 
+ 
+ 
+# Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
+client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
+client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
+
+# Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
+try:                                                    # <<< DO NOT MODIFY >>>
+   client.connect()                                    # <<< DO NOT MODIFY >>> 
    print("Connected to MQTT broker!")
 except Exception as e:                                             # <<< DO NOT MODIFY >>>
    print("Failed to connect to MQTT broker:", e)
+
+
+def connect_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    try:
+        wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
+    except Exception:
+        pass
+
+    if not wlan.isconnected():
+        wlan.connect(SSID, PASSWORD)
+        print("Attempting to connect to Wi-Fi")
+        while not wlan.isconnected():
+            sleep(0.1)
+        sleep(2)
+        print("Connected to Wi-Fi!")
+    return wlan
+
+
+def connect_mqtt():
+    mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
+    mqtt_client.DEBUG = True
+    try:
+        mqtt_client.connect()
+        print("Connected to MQTT broker!")
+    except Exception as e:
+        print("Failed to connect to MQTT broker:", e)
+        raise
+    return mqtt_client
+
+
+class _NullMQTTClient:
+    def publish(self, *args, **kwargs):
+        raise RuntimeError("MQTT client not connected")
+
+
+# Establish connections (required for MQTT publish below)
+try:
+    wlan = connect_wifi()
+    client = connect_mqtt()
+except Exception as e:
+    print("Startup connection failed:", e)
+    client = _NullMQTTClient()
+
+# SENSOR_ID = "Team02"
 
 # voltage divider
 V_in = 3.3
@@ -114,55 +180,84 @@ sleep(1)
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
+
+JOY_LOW = 500
+JOY_HIGH = 64000
+
+
+def get_joy_dir(x_value, y_value):
+    if y_value > JOY_HIGH:
+        return "up"
+    if y_value < JOY_LOW:
+        return "down"
+    if x_value < JOY_LOW:
+        return "left"
+    if x_value > JOY_HIGH:
+        return "right"
+    return None
+
+
+page = "main"
+last_dir = None
+prev_button_pressed = False
+
 while True:
 
+    x_joy_value = x_joy.read_u16()
+    y_joy_value = y_Joy.read_u16()
+    dir_now = get_joy_dir(x_joy_value, y_joy_value)
+
+    button_pressed = Button_Joy.is_pressed
+    button_rising = button_pressed and not prev_button_pressed
+    prev_button_pressed = button_pressed
+
+    # Debounce joystick movement: trigger only on edge
+    dir_edge = None
+    if dir_now is None:
+        last_dir = None
+    elif last_dir is None:
+        dir_edge = dir_now
+        last_dir = dir_now
+
+    # Navigation
+    if page == "main":
+        if dir_edge == "up":
+            page = "tempC"
+        elif dir_edge == "left":
+            page = "tempF"
+        elif dir_edge == "right":
+            page = "status"
+    else:
+        # In any submenu, press joystick button to go back
+        if button_rising:
+            page = "main"
+
+    # Render
     display.fill(0)
-    display.text("Main Page", 0, 0)
-    display.text("Up: Temp C", 0, 15)
-    display.text("Left: Temp F", 0, 30)
-    display.text("Right: Status", 0, 45)
+    if page == "main":
+        display.text("Main Page", 0, 0)
+        display.text("Up: Temp C", 0, 15)
+        display.text("Left: Temp F", 0, 30)
+        display.text("Right: Status", 0, 45)
+    elif page == "tempC":
+        display.text("Temp C Menu", 0, 0)
+        tempC = getTempC()
+        display.text(str(round(tempC, 2)) + " C", 0, 20)
+        display.text("Press to back", 0, 50)
+    elif page == "tempF":
+        display.text("Temp F Menu", 0, 0)
+        tempC = getTempC()
+        tempF = (tempC * 9/5) + 32
+        display.text(str(round(tempF, 2)) + " F", 0, 20)
+        display.text("Press to back", 0, 50)
+    elif page == "status":
+        display.text("Status Menu", 0, 0)
+        display.text("WiFi: Connected", 0, 20)
+        display.text("MQTT: Connected", 0, 35)
+        display.text("Press to back", 0, 50)
     display.show()
 
-    in_main_menu = True
-    while in_main_menu:
-        x_joy_value = x_joy.read_u16()
-        y_joy_value = y_Joy.read_u16()
-
-        # Up -> Temp C menu
-        if y_joy_value > 64000:
-            display.fill(0)
-            display.text("Temp C Menu", 0, 0)
-            tempC = getTempC()
-            display.text(str(round(tempC, 2)) + " C", 0, 20)
-            display.show()
-            if Button_Joy.value() == 0:
-                in_main_menu = False
-                sleep(0.2)
-
-        # Left -> Temp F menu
-        elif x_joy_value < 500:
-            display.fill(0)
-            display.text("Temp F Menu", 0, 0)
-            tempC = getTempC()
-            tempF = (tempC * 9/5) + 32
-            display.text(str(round(tempF, 2)) + " F", 0, 20)
-            display.show()
-            if Button_Joy.value() == 0:
-                in_main_menu = False
-                sleep(0.2)
-
-        # Right -> Status menu
-        elif x_joy_value > 64000:
-            display.fill(0)
-            display.text("Status Menu", 0, 0)
-            display.text("WiFi: Connected", 0, 20)
-            display.text("MQTT: Connected", 0, 35)
-            display.show()
-            if Button_Joy.value() == 0:
-                in_main_menu = False
-                sleep(0.2)
-
-        sleep(0.3)
+    sleep(0.3)
 
     # --- MQTT publish ---
     temperature_sensor_reading = getTempC()
@@ -177,3 +272,7 @@ while True:
         print(f"Published: {message_json}")
     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
         print("Publish failed:", e)
+
+
+
+
