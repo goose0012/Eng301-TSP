@@ -42,9 +42,7 @@ TOPIC = "pico/data" # "pico/data" is just a label                               
                     # It helps organize messages, like folders in a file system.  # <<< DO NOT MODIFY >>>
                     # The TOPIC could be any string, but leave it as "pico/data"  # <<< DO NOT MODIFY >>>
 
-# SENSOR_ID = "Team02"  # !!!-- CHANGE THIS AS DIRECTED BY DR. WILFONG --!!!
-
-SENSOR_ID = "Team02"
+SENSOR_ID = "Team02"  # !!!-- CHANGE THIS AS DIRECTED BY DR. WILFONG --!!!
 
  # Connect to Wi-Fi                                          # <<< DO NOT MODIFY >>>
 wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
@@ -70,51 +68,6 @@ try:                                                    # <<< DO NOT MODIFY >>>
 except Exception as e:                                             # <<< DO NOT MODIFY >>>
    print("Failed to connect to MQTT broker:", e)
 
-
-def connect_wifi():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    try:
-        wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
-    except Exception:
-        pass
-
-    if not wlan.isconnected():
-        wlan.connect(SSID, PASSWORD)
-        print("Attempting to connect to Wi-Fi")
-        while not wlan.isconnected():
-            sleep(0.1)
-        sleep(2)
-        print("Connected to Wi-Fi!")
-    return wlan
-
-
-def connect_mqtt():
-    mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
-    mqtt_client.DEBUG = True
-    try:
-        mqtt_client.connect()
-        print("Connected to MQTT broker!")
-    except Exception as e:
-        print("Failed to connect to MQTT broker:", e)
-        raise
-    return mqtt_client
-
-
-class _NullMQTTClient:
-    def publish(self, *args, **kwargs):
-        raise RuntimeError("MQTT client not connected")
-
-
-# Establish connections (required for MQTT publish below)
-try:
-    wlan = connect_wifi()
-    client = connect_mqtt()
-except Exception as e:
-    print("Startup connection failed:", e)
-    client = _NullMQTTClient()
-
-SENSOR_ID = "Team02"
 
 # voltage divider
 V_in = 3.3
