@@ -5,7 +5,7 @@ from machine import ADC, I2C, Pin
 from picozero import Button
 from ssd1306 import SSD1306_I2C
 from math import log
-from time import sleep  # <<< DO NOT MODIFY >>>
+from time import sleep, ticks_ms, ticks_diff  # <<< DO NOT MODIFY >>>
 sleep(1) # required for stability          # <<< DO NOT MODIFY >>>
 
 # Imports for MQTT communication           # <<< DO NOT MODIFY >>>
@@ -47,75 +47,75 @@ TOPIC = "pico/data" # "pico/data" is just a label                               
 SENSOR_ID = "Team02"
 
  # Connect to Wi-Fi                                          # <<< DO NOT MODIFY >>>
-wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
-wlan.active(True)                                           # <<< DO NOT MODIFY >>>
-wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
-wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
-
-print("Attempting to connect to Wi-Fi")
-while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
-    pass                                                    # <<< DO NOT MODIFY >>>
-
-sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
-print("Connected to Wi-Fi!")
+# wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
+# wlan.active(True)                                           # <<< DO NOT MODIFY >>>
+# wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
+# wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
+# 
+# print("Attempting to connect to Wi-Fi")
+# while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
+#     pass                                                    # <<< DO NOT MODIFY >>>
+# 
+# sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
+# print("Connected to Wi-Fi!")
  
  
  
 # Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
-client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
-client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
-
-# Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
-try:                                                    # <<< DO NOT MODIFY >>>
-   client.connect()                                    # <<< DO NOT MODIFY >>> 
-   print("Connected to MQTT broker!")
-except Exception as e:                                             # <<< DO NOT MODIFY >>>
-   print("Failed to connect to MQTT broker:", e)
-
-
-def connect_wifi():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    try:
-        wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
-    except Exception:
-        pass
-
-    if not wlan.isconnected():
-        wlan.connect(SSID, PASSWORD)
-        print("Attempting to connect to Wi-Fi")
-        while not wlan.isconnected():
-            sleep(0.1)
-        sleep(2)
-        print("Connected to Wi-Fi!")
-    return wlan
-
-
-def connect_mqtt():
-    mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
-    mqtt_client.DEBUG = True
-    try:
-        mqtt_client.connect()
-        print("Connected to MQTT broker!")
-    except Exception as e:
-        print("Failed to connect to MQTT broker:", e)
-        raise
-    return mqtt_client
-
-
-class _NullMQTTClient:
-    def publish(self, *args, **kwargs):
-        raise RuntimeError("MQTT client not connected")
-
-
-# Establish connections (required for MQTT publish below)
-try:
-    wlan = connect_wifi()
-    client = connect_mqtt()
-except Exception as e:
-    print("Startup connection failed:", e)
-    client = _NullMQTTClient()
-
+# client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
+# client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
+# 
+# # Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
+# try:                                                    # <<< DO NOT MODIFY >>>
+#    client.connect()                                    # <<< DO NOT MODIFY >>> 
+#    print("Connected to MQTT broker!")
+# except Exception as e:                                             # <<< DO NOT MODIFY >>>
+#    print("Failed to connect to MQTT broker:", e)
+# 
+# 
+# def connect_wifi():
+#     wlan = network.WLAN(network.STA_IF)
+#     wlan.active(True)
+#     try:
+#         wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
+#     except Exception:
+#         pass
+# 
+#     if not wlan.isconnected():
+#         wlan.connect(SSID, PASSWORD)
+#         print("Attempting to connect to Wi-Fi")
+#         while not wlan.isconnected():
+#             sleep(0.1)
+#         sleep(2)
+#         print("Connected to Wi-Fi!")
+#     return wlan
+# 
+# 
+# def connect_mqtt():
+#     mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
+#     mqtt_client.DEBUG = True
+#     try:
+#         mqtt_client.connect()
+#         print("Connected to MQTT broker!")
+#     except Exception as e:
+#         print("Failed to connect to MQTT broker:", e)
+#         raise
+#     return mqtt_client
+# 
+# 
+# class _NullMQTTClient:
+#     def publish(self, *args, **kwargs):
+#         raise RuntimeError("MQTT client not connected")
+# 
+# 
+# # Establish connections (required for MQTT publish below)
+# try:
+#     wlan = connect_wifi()
+#     client = connect_mqtt()
+# except Exception as e:
+#     print("Startup connection failed:", e)
+#     client = _NullMQTTClient()
+# 
 # SENSOR_ID = "Team02"
 
 # voltage divider
@@ -180,6 +180,7 @@ file.close()
 
 display.fill(0)
 display.text("UNLOCKED", 0, 0)
+start_time = ticks_ms()
 display.show()
 sleep(1)
 
@@ -194,12 +195,16 @@ JOY_HIGH = 64000
 # Translate joy values to directional input for system
 def get_joy_dir(x_value, y_value):
     if y_value > JOY_HIGH:
+        start_time = 0
         return "up"
     if y_value < JOY_LOW:
+        start_time = 0
         return "down"
     if x_value < JOY_LOW:
+        start_time = 0
         return "left"
     if x_value > JOY_HIGH:
+        start_time = 0
         return "right"
     return None
 
@@ -271,17 +276,26 @@ while True:
     display.show()
 
     sleep(0.2)
+    end_time = ticks_ms()
+    deltaTime = ticks_diff(end_time, start_time) / 1000
+    print(deltaTime)
+    if (deltaTime > 10):
+        display.fill(0)
+        display.text("Timeout.", 0, 0)
+        display.show()
+        break
 
     # --- MQTT publish ---
-    temperature_sensor_reading = getTempC()
-    message_data = {                                             # <<< DO NOT MODIFY >>>
-        "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
-        "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
-    }                                                            # <<< DO NOT MODIFY >>>
-    message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
+#     temperature_sensor_reading = getTempC()
+#     message_data = {                                             # <<< DO NOT MODIFY >>>
+#         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
+#         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
+#     }                                                            # <<< DO NOT MODIFY >>>
+#     message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
+# 
+#     try:                                                                       # <<< DO NOT MODIFY >>>
+#         client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
+#         print(f"Published: {message_json}")
+#     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
+#         print("Publish failed:", e)
 
-    try:                                                                       # <<< DO NOT MODIFY >>>
-        client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
-        print(f"Published: {message_json}")
-    except Exception as e:                                                     # <<< DO NOT MODIFY >>>
-        print("Publish failed:", e)
