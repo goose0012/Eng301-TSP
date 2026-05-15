@@ -59,7 +59,7 @@ while not wlan.isconnected():                               # <<< DO NOT MODIFY 
 sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
 print("Connected to Wi-Fi!")
 
-Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
+# Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
 client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
 client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
 
@@ -133,7 +133,7 @@ def getTempC():
     temperature_sensor_reading = TempK - 273.15
     return temperature_sensor_reading
 
-def askPassword():
+def askPassword(timeoutCheck):
     # Password flags
     left1_flag = False
     right1_flag = False
@@ -151,6 +151,8 @@ def askPassword():
             left1_flag = True
             print("Left Check!")
             sleep(0.2)
+        if (timeoutCheck == True):
+            broadcast_temp()
 
     while(right1_flag == False):
         x_joy_value = x_joy.read_u16()
@@ -158,6 +160,8 @@ def askPassword():
             right1_flag = True
             print("Right Check!")
             sleep(0.2)
+        if (timeoutCheck == True):
+            broadcast_temp()
 
     while(left2_flag == False):
         x_joy_value = x_joy.read_u16()
@@ -165,16 +169,21 @@ def askPassword():
             left2_flag = True
             print("Left 2 Check!")
             sleep(0.2)
+        if (timeoutCheck == True):
+            broadcast_temp()
 
     while(right2_flag == False):
         x_joy_value = x_joy.read_u16()
         if (x_joy_value > 64000):
             right2_flag = True
             print("Right 2 Check!")
+        if (timeoutCheck == True):
+            broadcast_temp()
+            
     
     return True
 
-if askPassword() == True:
+if askPassword(False) == True:
     display.fill(0)
     display.text("UNLOCKED", 0, 0)
     start_time = ticks_ms()
@@ -182,8 +191,9 @@ if askPassword() == True:
     sleep(1)
 
 def broadcast_temp():
-     temperature_sensor_reading = getTempC()
-     message_data = {                                             # <<< DO NOT MODIFY >>>
+    sleep(0.5)
+    temperature_sensor_reading = getTempC()
+    message_data = {                                             # <<< DO NOT MODIFY >>>
         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
     }                                                            # <<< DO NOT MODIFY >>>
@@ -298,11 +308,14 @@ while True:
     while (deltaTime > 10):
         display.fill(0)
         display.text("TIMEOUT", 0, 40)
+        timeoutCheck = True
         display.show()
         broadcast_temp()
-        if askPassword() == True:
+        if askPassword(True) == True:
+            start_time = ticks_ms()
             break
         sleep(0.1)
     broadcast_temp()
     sleep(0.1)
+
 
