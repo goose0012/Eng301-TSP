@@ -47,76 +47,74 @@ TOPIC = "pico/data" # "pico/data" is just a label                               
 SENSOR_ID = "Team02"
 
  # Connect to Wi-Fi                                          # <<< DO NOT MODIFY >>>
-# wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
-# wlan.active(True)                                           # <<< DO NOT MODIFY >>>
-# wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
-# wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
-# 
-# print("Attempting to connect to Wi-Fi")
-# while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
-#     pass                                                    # <<< DO NOT MODIFY >>>
-# 
-# sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
-# print("Connected to Wi-Fi!")
- 
- 
- 
-# Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
-# client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
-# client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
-# 
-# # Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
-# try:                                                    # <<< DO NOT MODIFY >>>
-#    client.connect()                                    # <<< DO NOT MODIFY >>> 
-#    print("Connected to MQTT broker!")
-# except Exception as e:                                             # <<< DO NOT MODIFY >>>
-#    print("Failed to connect to MQTT broker:", e)
-# 
-# 
-# def connect_wifi():
-#     wlan = network.WLAN(network.STA_IF)
-#     wlan.active(True)
-#     try:
-#         wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
-#     except Exception:
-#         pass
-# 
-#     if not wlan.isconnected():
-#         wlan.connect(SSID, PASSWORD)
-#         print("Attempting to connect to Wi-Fi")
-#         while not wlan.isconnected():
-#             sleep(0.1)
-#         sleep(2)
-#         print("Connected to Wi-Fi!")
-#     return wlan
-# 
-# 
-# def connect_mqtt():
-#     mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
-#     mqtt_client.DEBUG = True
-#     try:
-#         mqtt_client.connect()
-#         print("Connected to MQTT broker!")
-#     except Exception as e:
-#         print("Failed to connect to MQTT broker:", e)
-#         raise
-#     return mqtt_client
-# 
-# 
-# class _NullMQTTClient:
-#     def publish(self, *args, **kwargs):
-#         raise RuntimeError("MQTT client not connected")
-# 
-# 
-# # Establish connections (required for MQTT publish below)
-# try:
-#     wlan = connect_wifi()
-#     client = connect_mqtt()
-# except Exception as e:
-#     print("Startup connection failed:", e)
-#     client = _NullMQTTClient()
-# 
-# SENSOR_ID = "Team02"
+wlan = network.WLAN(network.STA_IF)                         # <<< DO NOT MODIFY >>>
+wlan.active(True)                                           # <<< DO NOT MODIFY >>>
+wlan.config(pm = 0xa11140) # disable Wi-Fi low power mode   # <<< DO NOT MODIFY >>>
+wlan.connect(SSID, PASSWORD)                                # <<< DO NOT MODIFY >>>
+
+print("Attempting to connect to Wi-Fi")
+while not wlan.isconnected():                               # <<< DO NOT MODIFY >>>
+    pass                                                   # <<< DO NOT MODIFY >>>
+
+sleep(2)  # Extra delay for stability                       # <<< DO NOT MODIFY >>>
+print("Connected to Wi-Fi!")
+
+Connect to MQTT broker with reconnect support         # <<< DO NOT MODIFY >>>
+client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER) # <<< DO NOT MODIFY >>>
+client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
+
+# Try to connect to MQTT broker                         # <<< DO NOT MODIFY >>>
+try:                                                    # <<< DO NOT MODIFY >>>
+   client.connect()                                    # <<< DO NOT MODIFY >>> 
+   print("Connected to MQTT broker!")
+except Exception as e:                                             # <<< DO NOT MODIFY >>>
+   print("Failed to connect to MQTT broker:", e)
+
+
+def connect_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    try:
+        wlan.config(pm=0xa11140)  # disable Wi-Fi low power mode
+    except Exception:
+        pass
+
+    if not wlan.isconnected():
+        wlan.connect(SSID, PASSWORD)
+        print("Attempting to connect to Wi-Fi")
+        while not wlan.isconnected():
+            sleep(0.1)
+        sleep(2)
+        print("Connected to Wi-Fi!")
+    return wlan
+
+
+def connect_mqtt():
+    mqtt_client = MQTTClient(f"client_{SENSOR_ID}", MQTT_BROKER)
+    mqtt_client.DEBUG = True
+    try:
+        mqtt_client.connect()
+        print("Connected to MQTT broker!")
+    except Exception as e:
+        print("Failed to connect to MQTT broker:", e)
+        raise
+    return mqtt_client
+
+
+class _NullMQTTClient:
+    def publish(self, *args, **kwargs):
+        raise RuntimeError("MQTT client not connected")
+
+
+# Establish connections (required for MQTT publish below)
+try:
+    wlan = connect_wifi()
+    client = connect_mqtt()
+except Exception as e:
+    print("Startup connection failed:", e)
+    client = _NullMQTTClient()
+
+SENSOR_ID = "Team02"
 
 # voltage divider
 V_in = 3.3
@@ -135,72 +133,67 @@ def getTempC():
     temperature_sensor_reading = TempK - 273.15
     return temperature_sensor_reading
 
-# Password flags
-left1_flag = False
-right1_flag = False
-left2_flag = False
-right2_flag = False
+def askPassword():
+    # Password flags
+    left1_flag = False
+    right1_flag = False
+    left2_flag = False
+    right2_flag = False
+    
+    display.text("Input the", 0, 10)
+    display.text("password.", 0, 20)
+    display.show()
 
+    # Get user input and unlock if matched.
+    while(left1_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value < 500):
+            left1_flag = True
+            print("Left Check!")
+            sleep(0.2)
 
-display.fill(0)
-display.text("Input the", 0, 10)
-display.text("password.", 0, 20)
-display.show()
+    while(right1_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value > 64000):
+            right1_flag = True
+            print("Right Check!")
+            sleep(0.2)
 
-# Get user input and unlock if matched.
-while(left1_flag == False):
-    x_joy_value = x_joy.read_u16()
-    if (x_joy_value < 500):
-        left1_flag = True
-        print("Left Check!")
-        sleep(0.2)
+    while(left2_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value < 500):
+            left2_flag = True
+            print("Left 2 Check!")
+            sleep(0.2)
 
-while(right1_flag == False):
-    x_joy_value = x_joy.read_u16()
-    if (x_joy_value > 64000):
-        right1_flag = True
-        print("Right Check!")
-        sleep(0.2)
+    while(right2_flag == False):
+        x_joy_value = x_joy.read_u16()
+        if (x_joy_value > 64000):
+            right2_flag = True
+            print("Right 2 Check!")
+    
+    return True
 
-while(left2_flag == False):
-    x_joy_value = x_joy.read_u16()
-    if (x_joy_value < 500):
-        left2_flag = True
-        print("Left 2 Check!")
-        sleep(0.2)
-
-while(right2_flag == False):
-    x_joy_value = x_joy.read_u16()
-    if (x_joy_value > 64000):
-        right2_flag = True
-        print("Right 2 Check!")
-
-file = open("data.txt", "w")
-file.close()
-
-display.fill(0)
-display.text("UNLOCKED", 0, 0)
-start_time = ticks_ms()
-display.show()
-sleep(1)
+if askPassword() == True:
+    display.fill(0)
+    display.text("UNLOCKED", 0, 0)
+    start_time = ticks_ms()
+    display.show()
+    sleep(1)
 
 def broadcast_temp():
-#     temperature_sensor_reading = getTempC()
-#     message_data = {                                             # <<< DO NOT MODIFY >>>
-#         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
-#         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
-#     }                                                            # <<< DO NOT MODIFY >>>
-#     message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
-# 
-#     try:                                                                       # <<< DO NOT MODIFY >>>
-#         client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
-#         print(f"Published: {message_json}")
-#     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
-#         print("Publish failed:", e)
+     temperature_sensor_reading = getTempC()
+     message_data = {                                             # <<< DO NOT MODIFY >>>
+        "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
+        "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
+    }                                                            # <<< DO NOT MODIFY >>>
+    message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
 
-############################################################
-####################### INFINITE LOOP ######################
-############################################################
+    try:                                                                       # <<< DO NOT MODIFY >>>
+        client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
+        print(f"Published: {message_json}")
+    except Exception as e:                                                     # <<< DO NOT MODIFY >>>
+        print("Publish failed:", e)
 
 # Define low and high joystick varaibles
 JOY_LOW = 500
@@ -218,13 +211,22 @@ def get_joy_dir(x_value, y_value):
         return "right"
     return None
 
-
+#set user on main page
 page = "main"
 last_dir = None
 prev_button_pressed = False
 
-while True:
+#create data file
+file = open("data.txt", "w")
+file.close()
 
+############################################################
+####################### INFINITE LOOP ######################
+############################################################
+
+while True:
+    
+    #get joystick values
     x_joy_value = x_joy.read_u16()
     y_joy_value = y_Joy.read_u16()
     dir_now = get_joy_dir(x_joy_value, y_joy_value)
@@ -232,6 +234,16 @@ while True:
     button_pressed = Button_Joy.is_pressed
     button_rising = button_pressed and not prev_button_pressed
     prev_button_pressed = button_pressed
+    
+    #get temperature values for C and F
+    tempC = getTempC()
+    tempF = (tempC * 9/5) + 32
+    
+    # append data to file previously opened
+    file = open("data.txt", "a")
+    file.write(str(tempC))
+    file.write('\n')
+    file.close()
 
     # Straight from stackoverflow, joystick only triggers when right on the edge
     dir_edge = None
@@ -257,14 +269,6 @@ while True:
         if button_rising:
             start_time = ticks_ms() # reset timeout timer on page change
             page = "main"
-
-    tempC = getTempC()
-    # Open for writing (overwrites existing content)
-    # Open for writing (overwrites existing content)
-    file = open("data.txt", "a")
-    file.write(str(tempC))
-    file.write('\n')
-    file.close() # Always close to save changes
     
     # Show pages
     display.fill(0)
@@ -279,7 +283,6 @@ while True:
         display.text("Press to back", 0, 50)
     elif page == "tempF":
         display.text("Temp F Menu", 0, 0)
-        tempF = (tempC * 9/5) + 32
         display.text(str(round(tempF, 2)) + " F", 0, 20)
         display.text("Press to back", 0, 50)
     elif page == "status":
@@ -289,13 +292,17 @@ while True:
         display.text("Press to back", 0, 50)
     display.show()
 
-    sleep(0.2)
     end_time = ticks_ms()
     deltaTime = ticks_diff(end_time, start_time) / 1000
     print(deltaTime)
     while (deltaTime > 10):
         display.fill(0)
-        display.text("Timeout.", 0, 0)
+        display.text("TIMEOUT", 0, 40)
         display.show()
         broadcast_temp()
+        if askPassword() == True:
+            break
+        sleep(0.1)
     broadcast_temp()
+    sleep(0.1)
+
