@@ -184,6 +184,20 @@ start_time = ticks_ms()
 display.show()
 sleep(1)
 
+def broadcast_temp():
+#     temperature_sensor_reading = getTempC()
+#     message_data = {                                             # <<< DO NOT MODIFY >>>
+#         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
+#         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
+#     }                                                            # <<< DO NOT MODIFY >>>
+#     message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
+# 
+#     try:                                                                       # <<< DO NOT MODIFY >>>
+#         client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
+#         print(f"Published: {message_json}")
+#     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
+#         print("Publish failed:", e)
+
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
@@ -195,16 +209,12 @@ JOY_HIGH = 64000
 # Translate joy values to directional input for system
 def get_joy_dir(x_value, y_value):
     if y_value > JOY_HIGH:
-        start_time = 0
         return "up"
     if y_value < JOY_LOW:
-        start_time = 0
         return "down"
     if x_value < JOY_LOW:
-        start_time = 0
         return "left"
     if x_value > JOY_HIGH:
-        start_time = 0
         return "right"
     return None
 
@@ -234,14 +244,18 @@ while True:
     # Navigation
     if page == "main":
         if dir_edge == "up":
+            start_time = ticks_ms() # reset timeout timer on page change
             page = "tempC"
         elif dir_edge == "left":
+            start_time = ticks_ms() # reset timeout timer on page change
             page = "tempF"
         elif dir_edge == "right":
+            start_time = ticks_ms() # reset timeout timer on page change
             page = "status"
     else:
         # Press button to go back. 
         if button_rising:
+            start_time = ticks_ms() # reset timeout timer on page change
             page = "main"
 
     tempC = getTempC()
@@ -279,23 +293,9 @@ while True:
     end_time = ticks_ms()
     deltaTime = ticks_diff(end_time, start_time) / 1000
     print(deltaTime)
-    if (deltaTime > 10):
+    while (deltaTime > 10):
         display.fill(0)
         display.text("Timeout.", 0, 0)
         display.show()
-        break
-
-    # --- MQTT publish ---
-#     temperature_sensor_reading = getTempC()
-#     message_data = {                                             # <<< DO NOT MODIFY >>>
-#         "sensorID": SENSOR_ID,                                   # <<< DO NOT MODIFY >>>
-#         "temperatureReading": temperature_sensor_reading         # <<< DO NOT MODIFY >>>
-#     }                                                            # <<< DO NOT MODIFY >>>
-#     message_json = json.dumps(message_data)                      # <<< DO NOT MODIFY >>>
-# 
-#     try:                                                                       # <<< DO NOT MODIFY >>>
-#         client.publish(TOPIC, message_json, retain=True)                       # <<< DO NOT MODIFY >>>
-#         print(f"Published: {message_json}")
-#     except Exception as e:                                                     # <<< DO NOT MODIFY >>>
-#         print("Publish failed:", e)
-
+        broadcast_temp()
+    broadcast_temp()
